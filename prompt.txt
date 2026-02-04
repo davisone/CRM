@@ -1,0 +1,244 @@
+Tu es un développeur senior spécialisé dans les CRM B2B orientés prospection commerciale.
+Ta mission est de concevoir l’architecture logique et fonctionnelle d’un CRM simple, robuste et scalable, sans sur-ingénierie.
+
+==================================================
+PRINCIPE FONDAMENTAL (NON NÉGOCIABLE)
+==================================================
+La récupération des entreprises doit être 100 % AUTOMATIQUE.
+
+Aucune action humaine ne doit être nécessaire pour :
+- détecter les entreprises
+- les importer
+- les mettre à jour
+
+Un ou plusieurs scripts automatisés doivent :
+- interroger régulièrement les sources de données
+- détecter uniquement les nouvelles entreprises et les changements
+- éviter les doublons
+- enrichir les données
+- injecter les informations dans le CRM
+- journaliser toutes les opérations (logs, dates, volumes)
+
+Si ce n’est pas automatique, ce n’est pas un CRM de prospection.
+
+==================================================
+OBJECTIF DU CRM
+==================================================
+Créer un CRM de prospection B2B capable de :
+- récupérer automatiquement toutes les entreprises françaises
+- détecter en priorité les nouvelles entreprises
+- enrichir les données entreprises et contacts
+- scorer et prioriser les prospects
+- organiser la prospection (appels, emails, relances)
+- assigner automatiquement les prospects à des téléprospecteurs et commerciaux
+- maximiser les opportunités de vente de sites web
+
+Le CRM doit être orienté ACTION et VENTE, pas un CRM générique.
+
+==================================================
+AUTOMATISATION — FLUX GLOBAL ATTENDU
+==================================================
+1) Détection automatique
+- Script planifié (quotidien ou configurable)
+- Récupération uniquement :
+  - des nouvelles entreprises
+  - des modifications importantes
+- Aucune relecture humaine
+
+2) Enrichissement automatique
+Pour chaque entreprise détectée :
+- enrichissement légal
+- enrichissement contacts
+- enrichissement visibilité web
+- calcul d’un score de priorité
+
+3) Priorisation automatique
+Le système doit décider :
+- si l’entreprise est prioritaire ou non
+- si elle doit aller en téléprospection ou directement en commercial
+- dans quel ordre elle doit être traitée
+
+4) Assignation automatique
+- répartition intelligente des prospects
+- équilibre de charge entre utilisateurs
+- aucun prospect ne doit rester sans propriétaire
+
+==================================================
+SOURCES DE DONNÉES (API À INTÉGRER)
+==================================================
+
+1) Données officielles & légales (socle obligatoire)
+- INPI :
+  - créations d’entreprises
+  - modifications (dirigeants, adresses, statut)
+  - fermetures
+  - détection automatique des nouvelles entreprises
+
+- INSEE :
+  - SIREN / SIRET
+  - code NAF
+  - effectifs estimés
+  - localisation précise
+
+2) Données juridiques & financières
+- Pappers :
+  - informations juridiques
+  - dirigeants
+  - documents légaux
+
+- Societe.com :
+  - données financières
+  - historique entreprise
+
+3) Enrichissement contacts
+- Dropcontact :
+  - emails professionnels
+  - validation / nettoyage
+  - conformité RGPD
+
+- Kaspr :
+  - emails
+  - téléphones
+  - profils LinkedIn
+
+4) Présence en ligne & activité réelle
+- Google Places :
+  - téléphone
+  - site web
+  - avis
+  - statut actif
+  - détection des entreprises sans site
+
+- OpenStreetMap :
+  - localisation
+  - type d’activité
+
+5) Maturité digitale & signaux business
+- Clearbit :
+  - données site web
+  - taille entreprise
+  - maturité digitale
+
+- LinkedIn (usage indirect) :
+  - dirigeants
+  - activité récente
+  - recrutements
+
+==================================================
+STRUCTURE D’UNE FICHE ENTREPRISE
+==================================================
+Chaque entreprise doit contenir :
+- nom
+- SIREN / SIRET
+- date de création
+- statut (active / fermée)
+- adresse complète
+- secteur / code NAF
+- taille estimée
+- dirigeants
+- emails
+- téléphones
+- site web
+- présence Google
+- notes internes
+- score de priorité
+- date d’import automatique
+- source de données
+
+==================================================
+QUALIFICATION & SCORING AUTOMATIQUE
+==================================================
+Statuts :
+- Nouveau
+- À contacter
+- Contacté
+- Intéressé
+- À relancer
+- Client
+- Non intéressé
+- Perdu
+
+Scoring basé sur :
+- entreprise récente
+- absence ou faiblesse du site web
+- secteur rentable
+- faible maturité digitale
+- dirigeant identifiable
+
+==================================================
+ACTIONS COMMERCIALES
+==================================================
+Depuis une fiche prospect :
+- appeler
+- envoyer un email
+- ajouter des notes
+- programmer une relance
+- changer le statut
+
+Historique obligatoire :
+- appels
+- emails
+- commentaires
+- dates
+- utilisateur
+
+==================================================
+GESTION DES UTILISATEURS
+==================================================
+Rôles :
+- Admin
+- Commercial
+- Téléprospecteur
+
+Fonctions :
+- assignation automatique et manuelle
+- réassignation simple
+- suivi de l’activité par utilisateur
+
+==================================================
+TABLEAUX DE BORD
+==================================================
+- nouvelles entreprises détectées automatiquement
+- appels effectués
+- emails envoyés
+- taux de réponse
+- taux de transformation
+- prospects par statut
+- performance par utilisateur
+- prospects sans action
+
+==================================================
+RELANCES & CONTRÔLES
+==================================================
+- alertes prospects non traités
+- relances planifiées
+- vue “prospects oubliés”
+- aucun prospect ne doit rester sans suivi
+
+==================================================
+QUALITÉ & CONFORMITÉ
+==================================================
+- détection des doublons
+- fusion de fiches
+- archivage
+- statut “ne plus contacter”
+- traçabilité complète
+- respect RGPD B2B
+
+==================================================
+PHILOSOPHIE PRODUIT
+==================================================
+- automatique par défaut
+- humain uniquement pour vendre
+- simple
+- rapide
+- orienté chiffre d’affaires
+- pas une usine à gaz
+
+LIVRABLE ATTENDU
+- architecture logique du CRM
+- scripts d’automatisation
+- modèles de données
+- flux entre API et CRM
+- priorisation MVP vs évolutions futures
+- recommandations pragmatiques pour un freelance solo
