@@ -17,37 +17,62 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: #1d4ed8;
-  --primary-foreground: #f8fafc;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
+  /* DVS Web palette */
+  --background: #0d0d0d;
+  --foreground: #e5e5e5;
+
+  --card: #1a1a1a;
+  --card-foreground: #e5e5e5;
+
+  --popover: #1a1a1a;
+  --popover-foreground: #e5e5e5;
+
+  --primary: #0d0d0d;
+  --primary-foreground: #e5e5e5;
+
+  --secondary: #1a1a1a;
+  --secondary-foreground: #e5e5e5;
+
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+
+  --accent: #c9a227;
+  --accent-foreground: #0d0d0d;
+
   --destructive: #ef4444;
-  --destructive-foreground: #f8fafc;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #1d4ed8;
+  --destructive-foreground: #e5e5e5;
+
+  --success: #22c55e;
+  --success-foreground: #0d0d0d;
+
+  --warning: #f59e0b;
+  --warning-foreground: #0d0d0d;
+
+  --border: #404040;
+  --input: #404040;
+  --ring: #c9a227;
+
+  --gold: #c9a227;
+  --gold-light: #d4b44a;
+
   --radius: 0.5rem;
 }
 
@@ -59,5 +84,24 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Scrollbar styling for dark theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #1a1a1a;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #404040;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #525252;
   }
 }

@@ -1,20 +1,35 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import { hash } from "bcryptjs";
 
-const prisma = new PrismaClient();
+const datasourceUrl = process.env.DATABASE_URL;
+if (!datasourceUrl) {
+  throw new Error("DATABASE_URL is not set");
+}
+
+const pool = new Pool({ connectionString: datasourceUrl });
+const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 async function main() {
   // Create admin user
-  const adminPassword = await hash("admin123", 12);
+  const adminPassword = await hash("Guadeloupe971", 12);
   const admin = await prisma.user.upsert({
-    where: { email: "admin@crm.fr" },
-    update: {},
-    create: {
-      email: "admin@crm.fr",
-      name: "Admin CRM",
+    where: { email: "evandavison@outlook.fr" },
+    update: {
+      name: "Evan Davison",
       passwordHash: adminPassword,
       role: "ADMIN",
       maxProspects: 999,
+      isActive: true,
+    },
+    create: {
+      email: "evandavison@outlook.fr",
+      name: "Evan Davison",
+      passwordHash: adminPassword,
+      role: "ADMIN",
+      maxProspects: 999,
+      isActive: true,
     },
   });
   console.log("Admin created:", admin.email);
@@ -107,4 +122,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

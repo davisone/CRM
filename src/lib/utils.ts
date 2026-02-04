@@ -29,17 +29,17 @@ export function formatDateTime(date: Date | string | null | undefined): string {
 
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    NOUVEAU: "bg-gray-100 text-gray-800",
-    A_CONTACTER: "bg-blue-100 text-blue-800",
-    CONTACTE: "bg-yellow-100 text-yellow-800",
-    INTERESSE: "bg-green-100 text-green-800",
-    A_RELANCER: "bg-orange-100 text-orange-800",
-    CLIENT: "bg-emerald-100 text-emerald-800",
-    NON_INTERESSE: "bg-red-100 text-red-800",
-    PERDU: "bg-red-200 text-red-900",
-    NE_PLUS_CONTACTER: "bg-purple-100 text-purple-800",
+    NOUVEAU: "bg-neutral-800 text-neutral-300",
+    A_CONTACTER: "bg-blue-900/40 text-blue-400",
+    CONTACTE: "bg-yellow-900/40 text-yellow-400",
+    INTERESSE: "bg-green-900/40 text-green-400",
+    A_RELANCER: "bg-orange-900/40 text-orange-400",
+    CLIENT: "bg-emerald-900/40 text-emerald-400",
+    NON_INTERESSE: "bg-red-900/40 text-red-400",
+    PERDU: "bg-red-950/50 text-red-500",
+    NE_PLUS_CONTACTER: "bg-purple-900/40 text-purple-400",
   };
-  return colors[status] || "bg-gray-100 text-gray-800";
+  return colors[status] || "bg-neutral-800 text-neutral-300";
 }
 
 export function getStatusLabel(status: string): string {
@@ -70,13 +70,13 @@ export function getPriorityLabel(priority: number): string {
 
 export function getPriorityColor(priority: number): string {
   const colors: Record<number, string> = {
-    1: "bg-red-100 text-red-800",
-    2: "bg-orange-100 text-orange-800",
-    3: "bg-blue-100 text-blue-800",
-    4: "bg-gray-100 text-gray-600",
-    5: "bg-gray-50 text-gray-400",
+    1: "bg-red-900/40 text-red-400",
+    2: "bg-orange-900/40 text-orange-400",
+    3: "bg-blue-900/40 text-blue-400",
+    4: "bg-neutral-800 text-neutral-500",
+    5: "bg-neutral-800/50 text-neutral-600",
   };
-  return colors[priority] || "bg-gray-100 text-gray-800";
+  return colors[priority] || "bg-neutral-800 text-neutral-300";
 }
 
 export function getActivityIcon(type: string): string {
