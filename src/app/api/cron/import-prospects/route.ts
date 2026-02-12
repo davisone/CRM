@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { searchCompaniesWithFilters, parseINPIToProspect } from "@/services/inpi";
+import { getUniteLegaleBySiren } from "@/services/insee";
 import { IMPORT_CONFIG, getSearchFilters } from "@/config/import-filters";
 
 // Sécurité : vérifier le token cron (Vercel envoie CRON_SECRET)
@@ -81,14 +82,27 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Créer le prospect avec ses dirigeants
+        // Si le nom est générique "Entreprise XXX", enrichir via INSEE
+        let companyName = prospectData.companyName;
+        if (companyName.startsWith("Entreprise ")) {
+          try {
+            const insee = await getUniteLegaleBySiren(prospectData.siren);
+            if (insee?.denominationUniteLegale) {
+              companyName = insee.denominationUniteLegale;
+            }
+          } catch {
+            // INSEE échoue, on garde le nom par défaut
+          }
+        }
+
+        // Créer le prospect
         const directors = prospectData.directors || [];
 
         await prisma.prospect.create({
           data: {
             siren: prospectData.siren,
             siret: prospectData.siret,
-            companyName: prospectData.companyName,
+            companyName,
             legalForm: prospectData.legalForm,
             nafCode: prospectData.nafCode,
             creationDate: prospectData.creationDate,
