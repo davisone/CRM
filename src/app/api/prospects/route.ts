@@ -3,6 +3,23 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { createProspectSchema } from "@/lib/validations";
 import type { Prisma } from "@prisma/client";
+import { Pool } from "pg";
+
+/**
+ * Queue a job by inserting directly into pg-boss tables.
+ */
+async function sendJob(name: string, data: Record<string, unknown>) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
+  try {
+    await pool.query(
+      `INSERT INTO pgboss.job (name, data, state, retrylimit, retrydelay, expirein)
+       VALUES ($1, $2, 'created', 3, 30, interval '24 hours')`,
+      [name, JSON.stringify(data)]
+    );
+  } finally {
+    await pool.end();
+  }
+}
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -136,6 +153,14 @@ export async function POST(request: NextRequest) {
       changedBy: session.user.id,
     },
   });
+
+  // Auto-trigger enrichment job (INSEE, Pappers, Google Places)
+  try {
+    await sendJob("enrich-company", { prospectId: prospect.id });
+  } catch (err) {
+    // Log but don't fail the creation if job queueing fails
+    console.error("Failed to queue enrichment job:", err);
+  }
 
   return NextResponse.json(prospect, { status: 201 });
 }

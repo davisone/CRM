@@ -1,11 +1,13 @@
 /**
  * INPI RNE API Client
  * API du Registre National des Entreprises
- * Docs: https://data.inpi.fr/
+ * Auth: POST /api/sso/login avec username/password
+ * Docs: https://registre-national-entreprises.inpi.fr/
  */
 
 interface INPIAuthResponse {
   token: string;
+  // L'API peut aussi renvoyer expires_in, refresh_token, etc.
 }
 
 interface INPICompany {
@@ -38,32 +40,36 @@ interface INPISearchResult {
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
-const BASE_URL = "https://data.inpi.fr/api/v1";
+const BASE_URL = "https://registre-national-entreprises.inpi.fr/api";
+const AUTH_URL = `${BASE_URL}/sso/login`;
 
 async function authenticate(): Promise<string> {
+  // Retourner le token en cache s'il est encore valide
   if (cachedToken && cachedToken.expiresAt > Date.now()) {
     return cachedToken.token;
   }
 
-  const clientId = process.env.INPI_CLIENT_ID;
-  const clientSecret = process.env.INPI_CLIENT_SECRET;
+  const username = process.env.INPI_USERNAME;
+  const password = process.env.INPI_PASSWORD;
 
-  if (!clientId || !clientSecret) {
-    throw new Error("INPI credentials not configured (INPI_CLIENT_ID / INPI_CLIENT_SECRET)");
+  if (!username || !password) {
+    throw new Error("INPI credentials not configured (INPI_USERNAME / INPI_PASSWORD)");
   }
 
-  const res = await fetch(`${BASE_URL}/auth/token`, {
+  const res = await fetch(AUTH_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: clientId, password: clientSecret }),
+    body: JSON.stringify({ username, password }),
   });
 
   if (!res.ok) {
-    throw new Error(`INPI auth failed: ${res.status} ${res.statusText}`);
+    const errorText = await res.text().catch(() => "");
+    throw new Error(`INPI auth failed: ${res.status} ${res.statusText} - ${errorText}`);
   }
 
   const data: INPIAuthResponse = await res.json();
-  // Token valid for ~23 hours, refresh at 22h
+
+  // Token valide ~24h, on le refresh à 22h par sécurité
   cachedToken = {
     token: data.token,
     expiresAt: Date.now() + 22 * 60 * 60 * 1000,
@@ -88,7 +94,8 @@ export async function searchNewCompanies(
     sort: "dateCreation:desc",
   });
 
-  const res = await fetch(`${BASE_URL}/entreprises?${params}`, {
+  // API RNE : endpoint /companies pour la recherche
+  const res = await fetch(`${BASE_URL}/companies?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -103,7 +110,8 @@ export async function searchNewCompanies(
 export async function getCompanyBySiren(siren: string): Promise<INPICompany | null> {
   const token = await authenticate();
 
-  const res = await fetch(`${BASE_URL}/entreprises/${siren}`, {
+  // API RNE : /companies/{siren}
+  const res = await fetch(`${BASE_URL}/companies/${siren}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 

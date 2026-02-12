@@ -1,14 +1,9 @@
 /**
  * INSEE SIRENE API Client
- * OAuth2 with 24h token, rate limited to 30 req/min
- * Docs: https://api.insee.fr/catalogue/site/themes/wso2/subthemes/insee/pages/item-info.jag?name=Sirene&version=V3&provider=insee
+ * API Key authentication via X-INSEE-Api-Key-Integration header
+ * Rate limited to 30 req/min
+ * Docs: https://portail-api.insee.fr/
  */
-
-interface INSEETokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-}
 
 interface INSEEUniteLegale {
   siren: string;
@@ -40,12 +35,10 @@ interface INSEEEtablissement {
   uniteLegale?: INSEEUniteLegale;
 }
 
-let tokenCache: { token: string; expiresAt: number } | null = null;
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 2000; // 30 req/min = 1 every 2s
 
-const BASE_URL = "https://api.insee.fr/entreprises/sirene/V3.11";
-const TOKEN_URL = "https://api.insee.fr/token";
+const BASE_URL = "https://api.insee.fr/api-sirene/3.11";
 
 async function rateLimit() {
   const now = Date.now();
@@ -56,50 +49,21 @@ async function rateLimit() {
   lastRequestTime = Date.now();
 }
 
-async function getToken(): Promise<string> {
-  if (tokenCache && tokenCache.expiresAt > Date.now()) {
-    return tokenCache.token;
+function getApiKey(): string {
+  const apiKey = process.env.INSEE_API_KEY;
+  if (!apiKey) {
+    throw new Error("INSEE_API_KEY not configured");
   }
-
-  const clientId = process.env.INSEE_CLIENT_ID;
-  const clientSecret = process.env.INSEE_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error("INSEE credentials not configured (INSEE_CLIENT_ID / INSEE_CLIENT_SECRET)");
-  }
-
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-
-  if (!res.ok) {
-    throw new Error(`INSEE token failed: ${res.status}`);
-  }
-
-  const data: INSEETokenResponse = await res.json();
-  tokenCache = {
-    token: data.access_token,
-    // Refresh 1h before expiry (tokens last ~24h)
-    expiresAt: Date.now() + (data.expires_in - 3600) * 1000,
-  };
-
-  return data.access_token;
+  return apiKey;
 }
 
 export async function getEtablissementBySiret(siret: string): Promise<INSEEEtablissement | null> {
   await rateLimit();
-  const token = await getToken();
+  const apiKey = getApiKey();
 
   const res = await fetch(`${BASE_URL}/siret/${siret}`, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      "X-INSEE-Api-Key-Integration": apiKey,
       Accept: "application/json",
     },
   });
@@ -121,11 +85,11 @@ export async function getEtablissementBySiret(siret: string): Promise<INSEEEtabl
 
 export async function getUniteLegaleBySiren(siren: string): Promise<INSEEUniteLegale | null> {
   await rateLimit();
-  const token = await getToken();
+  const apiKey = getApiKey();
 
   const res = await fetch(`${BASE_URL}/siren/${siren}`, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      "X-INSEE-Api-Key-Integration": apiKey,
       Accept: "application/json",
     },
   });
@@ -146,13 +110,13 @@ export async function getUniteLegaleBySiren(siren: string): Promise<INSEEUniteLe
 
 export async function searchSiegeParSiren(siren: string): Promise<INSEEEtablissement | null> {
   await rateLimit();
-  const token = await getToken();
+  const apiKey = getApiKey();
 
   const res = await fetch(
     `${BASE_URL}/siret?q=siren:${siren} AND etablissementSiege:true`,
     {
       headers: {
-        Authorization: `Bearer ${token}`,
+        "X-INSEE-Api-Key-Integration": apiKey,
         Accept: "application/json",
       },
     }

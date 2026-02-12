@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { useSession } from "next-auth/react";
@@ -64,6 +64,71 @@ export default function ProspectsPage() {
   const [createError, setCreateError] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // Auto-complétion INSEE
+  const [sirenInput, setSirenInput] = useState("");
+  const [inseeLoading, setInseeLoading] = useState(false);
+  const [inseeData, setInseeData] = useState<{
+    companyName?: string;
+    siret?: string;
+    address?: string;
+    postalCode?: string;
+    city?: string;
+    legalForm?: string;
+    nafCode?: string;
+    employeeCount?: number;
+    creationDate?: string;
+  } | null>(null);
+  const lastFetchedSiren = useRef<string>("");
+
+  const lookupInsee = useCallback(async (siren: string) => {
+    if (siren.length !== 9 || !/^\d{9}$/.test(siren)) return;
+    if (lastFetchedSiren.current === siren) return;
+
+    setInseeLoading(true);
+    lastFetchedSiren.current = siren;
+
+    try {
+      const res = await fetch(`/api/insee/lookup?siren=${siren}`);
+      if (res.ok) {
+        const data = await res.json();
+        setInseeData(data);
+        toast({
+          title: "Entreprise trouvée",
+          description: data.companyName || "Données récupérées depuis l'INSEE",
+          variant: "success",
+        });
+      } else if (res.status === 404) {
+        setInseeData(null);
+        toast({
+          title: "Entreprise non trouvée",
+          description: "Aucune entreprise avec ce SIREN.",
+          variant: "destructive",
+        });
+      } else {
+        setInseeData(null);
+      }
+    } catch {
+      setInseeData(null);
+    } finally {
+      setInseeLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (sirenInput.length === 9 && /^\d{9}$/.test(sirenInput)) {
+      lookupInsee(sirenInput);
+    }
+  }, [sirenInput, lookupInsee]);
+
+  // Reset form state when dialog closes
+  useEffect(() => {
+    if (!dialogOpen) {
+      setSirenInput("");
+      setInseeData(null);
+      lastFetchedSiren.current = "";
+    }
+  }, [dialogOpen]);
+
   function formatValidationError(details?: Record<string, string[]>) {
     if (!details) return "";
     const messages = Object.values(details).flat();
@@ -100,7 +165,12 @@ export default function ProspectsPage() {
     const payload = {
       siren: String(formData.get("siren") || "").trim(),
       companyName: String(formData.get("companyName") || "").trim(),
+      siret: inseeData?.siret || undefined,
       city: String(formData.get("city") || "").trim() || undefined,
+      postalCode: String(formData.get("postalCode") || "").trim() || undefined,
+      address: String(formData.get("address") || "").trim() || undefined,
+      legalForm: inseeData?.legalForm || undefined,
+      nafCode: inseeData?.nafCode || undefined,
       email: String(formData.get("email") || "").trim() || undefined,
       phone: String(formData.get("phone") || "").trim() || undefined,
       website: String(formData.get("website") || "").trim() || undefined,
@@ -188,6 +258,16 @@ export default function ProspectsPage() {
                   {createError}
                 </div>
               )}
+              {inseeLoading && (
+                <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                  Recherche INSEE en cours...
+                </div>
+              )}
+              {inseeData && (
+                <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+                  Entreprise trouvée - champs pré-remplis automatiquement
+                </div>
+              )}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="siren">SIREN</Label>
@@ -199,15 +279,47 @@ export default function ProspectsPage() {
                     maxLength={9}
                     inputMode="numeric"
                     pattern="\\d{9}"
+                    value={sirenInput}
+                    onChange={(e) => setSirenInput(e.target.value.replace(/\D/g, "").slice(0, 9))}
+                    placeholder="123456789"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="companyName">Raison sociale</Label>
-                  <Input id="companyName" name="companyName" required />
+                  <Input
+                    id="companyName"
+                    name="companyName"
+                    required
+                    defaultValue={inseeData?.companyName || ""}
+                    key={`companyName-${inseeData?.companyName || ""}`}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="city">Ville</Label>
-                  <Input id="city" name="city" />
+                  <Input
+                    id="city"
+                    name="city"
+                    defaultValue={inseeData?.city || ""}
+                    key={`city-${inseeData?.city || ""}`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postalCode">Code postal</Label>
+                  <Input
+                    id="postalCode"
+                    name="postalCode"
+                    defaultValue={inseeData?.postalCode || ""}
+                    key={`postalCode-${inseeData?.postalCode || ""}`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Adresse</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    defaultValue={inseeData?.address || ""}
+                    key={`address-${inseeData?.address || ""}`}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -223,7 +335,14 @@ export default function ProspectsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="employeeCount">Effectif</Label>
-                  <Input id="employeeCount" name="employeeCount" type="number" min={0} />
+                  <Input
+                    id="employeeCount"
+                    name="employeeCount"
+                    type="number"
+                    min={0}
+                    defaultValue={inseeData?.employeeCount || ""}
+                    key={`employeeCount-${inseeData?.employeeCount || ""}`}
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-2">
