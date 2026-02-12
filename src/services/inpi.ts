@@ -7,35 +7,107 @@
 
 interface INPIAuthResponse {
   token: string;
-  // L'API peut aussi renvoyer expires_in, refresh_token, etc.
 }
 
-interface INPICompany {
-  siren: string;
-  denominationUniteLegale?: string;
-  sigleUniteLegale?: string;
-  dateCreationUniteLegale?: string;
-  categorieJuridiqueUniteLegale?: string;
-  activitePrincipaleUniteLegale?: string;
-  trancheEffectifsUniteLegale?: string;
-  adresseEtablissement?: {
-    numeroVoieEtablissement?: string;
-    typeVoieEtablissement?: string;
-    libelleVoieEtablissement?: string;
-    codePostalEtablissement?: string;
-    libelleCommuneEtablissement?: string;
+// Structure réelle de la réponse API RNE
+interface INPIRawCompany {
+  id: string;
+  updatedAt: string;
+  formality: {
+    siren: string;
+    content: {
+      natureCreation?: {
+        dateCreation?: string;
+        formeJuridique?: string;
+      };
+      personneMorale?: {
+        identite?: {
+          entreprise?: {
+            siren?: string;
+            denomination?: string;
+            sigle?: string;
+            formeJuridique?: string;
+            codeApe?: string;
+            dateImmat?: string;
+          };
+        };
+        adresseEntreprise?: {
+          adresse?: {
+            numVoie?: string;
+            typeVoie?: string;
+            voie?: string;
+            codePostal?: string;
+            commune?: string;
+            pays?: string;
+          };
+        };
+        etablissementPrincipal?: {
+          descriptionEtablissement?: {
+            siret?: string;
+            codeApe?: string;
+          };
+        };
+      };
+      personnePhysique?: {
+        adresseEntreprise?: {
+          adresse?: {
+            numVoie?: string;
+            typeVoie?: string;
+            voie?: string;
+            codePostal?: string;
+            commune?: string;
+          };
+        };
+        etablissementPrincipal?: {
+          descriptionEtablissement?: {
+            siret?: string;
+            codeApe?: string;
+          };
+          activites?: Array<{
+            codeApe?: string;
+          }>;
+        };
+        identite?: {
+          entrepreneur?: {
+            nom?: string;
+            prenoms?: string;
+          };
+        };
+      };
+    };
   };
-  dirigeants?: Array<{
-    nom?: string;
-    prenom?: string;
-    qualite?: string;
-    dateNaissance?: string;
-  }>;
+}
+
+// Structure normalisée pour notre CRM
+export interface INPICompany {
+  siren: string;
+  siret?: string;
+  denomination?: string;
+  formeJuridique?: string;
+  codeApe?: string;
+  dateCreation?: string;
+  adresse?: {
+    numVoie?: string;
+    typeVoie?: string;
+    voie?: string;
+    codePostal?: string;
+    commune?: string;
+  };
 }
 
 interface INPISearchResult {
   results: INPICompany[];
   totalResults: number;
+  rawResults: INPIRawCompany[];
+}
+
+export interface INPISearchFilters {
+  dateFrom?: string;
+  dateTo?: string;
+  nafCodes?: string[];
+  departments?: string[];
+  regions?: string[];
+  legalForms?: string[];
 }
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
@@ -44,7 +116,6 @@ const BASE_URL = "https://registre-national-entreprises.inpi.fr/api";
 const AUTH_URL = `${BASE_URL}/sso/login`;
 
 async function authenticate(): Promise<string> {
-  // Retourner le token en cache s'il est encore valide
   if (cachedToken && cachedToken.expiresAt > Date.now()) {
     return cachedToken.token;
   }
@@ -69,7 +140,6 @@ async function authenticate(): Promise<string> {
 
   const data: INPIAuthResponse = await res.json();
 
-  // Token valide ~24h, on le refresh à 22h par sécurité
   cachedToken = {
     token: data.token,
     expiresAt: Date.now() + 22 * 60 * 60 * 1000,
@@ -78,23 +148,109 @@ async function authenticate(): Promise<string> {
   return data.token;
 }
 
+/**
+ * Parse une réponse brute de l'API RNE vers notre structure normalisée
+ */
+function parseRawCompany(raw: INPIRawCompany): INPICompany {
+  const f = raw.formality;
+  const c = f.content;
+  const pm = c.personneMorale;
+  const pp = c.personnePhysique;
+
+  // Personne morale (société)
+  if (pm) {
+    const entreprise = pm.identite?.entreprise;
+    const addr = pm.adresseEntreprise?.adresse;
+    const etab = pm.etablissementPrincipal?.descriptionEtablissement;
+
+    return {
+      siren: f.siren,
+      siret: etab?.siret,
+      denomination: entreprise?.denomination || entreprise?.sigle,
+      formeJuridique: entreprise?.formeJuridique || c.natureCreation?.formeJuridique,
+      codeApe: entreprise?.codeApe || etab?.codeApe,
+      dateCreation: c.natureCreation?.dateCreation,
+      adresse: addr ? {
+        numVoie: addr.numVoie,
+        typeVoie: addr.typeVoie,
+        voie: addr.voie,
+        codePostal: addr.codePostal,
+        commune: addr.commune,
+      } : undefined,
+    };
+  }
+
+  // Personne physique (entrepreneur individuel)
+  if (pp) {
+    const ident = pp.identite?.entrepreneur;
+    const addr = pp.adresseEntreprise?.adresse;
+    const etab = pp.etablissementPrincipal;
+
+    return {
+      siren: f.siren,
+      siret: etab?.descriptionEtablissement?.siret,
+      denomination: ident ? `${ident.prenoms || ""} ${ident.nom || ""}`.trim() : undefined,
+      formeJuridique: c.natureCreation?.formeJuridique,
+      codeApe: etab?.descriptionEtablissement?.codeApe || etab?.activites?.[0]?.codeApe,
+      dateCreation: c.natureCreation?.dateCreation,
+      adresse: addr ? {
+        numVoie: addr.numVoie,
+        typeVoie: addr.typeVoie,
+        voie: addr.voie,
+        codePostal: addr.codePostal,
+        commune: addr.commune,
+      } : undefined,
+    };
+  }
+
+  // Fallback minimal
+  return {
+    siren: f.siren,
+    formeJuridique: c.natureCreation?.formeJuridique,
+    dateCreation: c.natureCreation?.dateCreation,
+  };
+}
+
 export async function searchNewCompanies(
   dateFrom: string,
   dateTo: string,
   page = 1,
   pageSize = 100
 ): Promise<INPISearchResult> {
+  return searchCompaniesWithFilters({ dateFrom, dateTo }, page, pageSize);
+}
+
+export async function searchCompaniesWithFilters(
+  filters: INPISearchFilters,
+  page = 1,
+  pageSize = 100
+): Promise<INPISearchResult> {
   const token = await authenticate();
 
-  const params = new URLSearchParams({
-    dateCreationMin: dateFrom,
-    dateCreationMax: dateTo,
+  const searchParams: Record<string, string> = {
     page: String(page),
     pageSize: String(pageSize),
     sort: "dateCreation:desc",
-  });
+  };
 
-  // API RNE : endpoint /companies pour la recherche
+  if (filters.dateFrom) {
+    searchParams.dateCreationMin = filters.dateFrom;
+  }
+  if (filters.dateTo) {
+    searchParams.dateTo = filters.dateTo;
+  }
+  if (filters.nafCodes && filters.nafCodes.length > 0) {
+    searchParams.activitePrincipale = filters.nafCodes.join(",");
+  }
+  if (filters.departments && filters.departments.length > 0) {
+    searchParams.codePostal = filters.departments.map(d => `${d}*`).join(",");
+  }
+  if (filters.legalForms && filters.legalForms.length > 0) {
+    searchParams.formeJuridique = filters.legalForms.join(",");
+  }
+
+  const params = new URLSearchParams(searchParams);
+
   const res = await fetch(`${BASE_URL}/companies?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -104,13 +260,18 @@ export async function searchNewCompanies(
     throw new Error(`INPI search failed: ${res.status} - ${text}`);
   }
 
-  return res.json();
+  const rawResults: INPIRawCompany[] = await res.json();
+
+  return {
+    results: rawResults.map(parseRawCompany),
+    totalResults: rawResults.length,
+    rawResults,
+  };
 }
 
 export async function getCompanyBySiren(siren: string): Promise<INPICompany | null> {
   const token = await authenticate();
 
-  // API RNE : /companies/{siren}
   const res = await fetch(`${BASE_URL}/companies/${siren}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -121,48 +282,35 @@ export async function getCompanyBySiren(siren: string): Promise<INPICompany | nu
     throw new Error(`INPI company fetch failed: ${res.status}`);
   }
 
-  return res.json();
+  const raw: INPIRawCompany = await res.json();
+  return parseRawCompany(raw);
 }
 
+/**
+ * Convertit une entreprise INPI vers le format Prospect du CRM
+ */
 export function parseINPIToProspect(company: INPICompany) {
-  const addr = company.adresseEtablissement;
+  const addr = company.adresse;
+
   return {
     siren: company.siren,
-    companyName:
-      company.denominationUniteLegale ||
-      company.sigleUniteLegale ||
-      `Entreprise ${company.siren}`,
-    legalForm: company.categorieJuridiqueUniteLegale || undefined,
-    nafCode: company.activitePrincipaleUniteLegale || undefined,
-    creationDate: company.dateCreationUniteLegale
-      ? new Date(company.dateCreationUniteLegale)
-      : undefined,
+    siret: company.siret,
+    companyName: company.denomination || `Entreprise ${company.siren}`,
+    legalForm: company.formeJuridique,
+    nafCode: company.codeApe,
+    creationDate: company.dateCreation ? new Date(company.dateCreation) : undefined,
     address: addr
-      ? [addr.numeroVoieEtablissement, addr.typeVoieEtablissement, addr.libelleVoieEtablissement]
-          .filter(Boolean)
-          .join(" ")
+      ? [addr.numVoie, addr.typeVoie, addr.voie].filter(Boolean).join(" ")
       : undefined,
-    postalCode: addr?.codePostalEtablissement || undefined,
-    city: addr?.libelleCommuneEtablissement || undefined,
-    employeeCount: parseTrancheEffectifs(company.trancheEffectifsUniteLegale),
-    directors: (company.dirigeants || []).map((d) => ({
-      firstName: d.prenom || undefined,
-      lastName: d.nom || "Inconnu",
-      role: d.qualite || undefined,
-      birthDate: d.dateNaissance ? new Date(d.dateNaissance) : undefined,
-    })),
+    postalCode: addr?.codePostal,
+    city: addr?.commune,
+    directors: [] as Array<{
+      firstName?: string;
+      lastName: string;
+      role?: string;
+      birthDate?: Date;
+    }>,
   };
 }
 
-function parseTrancheEffectifs(tranche?: string): number | undefined {
-  if (!tranche) return undefined;
-  const map: Record<string, number> = {
-    "00": 0, "01": 1, "02": 3, "03": 6,
-    "11": 10, "12": 20, "21": 50, "22": 100,
-    "31": 200, "32": 250, "41": 500, "42": 1000,
-    "51": 2000, "52": 5000, "53": 10000,
-  };
-  return map[tranche] ?? undefined;
-}
-
-export type { INPICompany, INPISearchResult };
+export type { INPISearchResult };
